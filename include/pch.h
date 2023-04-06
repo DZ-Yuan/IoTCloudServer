@@ -26,6 +26,7 @@
 #include "DataPacket.h"
 #include "network_system.h"
 #include "fun.h"
+#include "config.h"
 
 using namespace std;
 

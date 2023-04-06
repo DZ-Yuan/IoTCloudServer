@@ -25,11 +25,14 @@ int CreateUDPSock(char* addr)
 {
     int sock = socket(AF_INET, SOCK_DGRAM, 0);
 
+    return sock;
 }
 
 int CreateTCPSock(char* addr)
 {
     int sock = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+
+    return sock;
 }
 
 int SendMsg(int sock, char* buf, int size)
@@ -101,7 +104,7 @@ int SendMsgTo(int sock, char* buf, int size, char* peer)
 
     if(res <= 0)
     {
-        printf("[%s]: send err\n", __FUNCTION__);
+        printf("[%s] UDP send: send err\n", __FUNCTION__);
     }
 
     return 0;
@@ -133,16 +136,16 @@ int RecvMsgFrom(int sock, char* buf, int size, char* local, char* peer)
     socklen_t addr_len = sizeof(peer_addr);
 
     if(bind(sock, (struct sockaddr *) &local_addr, sizeof(local_addr)) < 0)
-    {   
+    {
         perror("bind() error");
-        exit(1); 
+        exit(1);
     }
 
     int res = recvfrom(sock, buf, size, 0, (struct sockaddr*)&peer_addr, &addr_len);
 
     if(res <= 0)
     {
-
+        printf("[%s] UDP recv err!\n", __FUNCTION__);
     }
 
     printf("Recv: %s", buf);
