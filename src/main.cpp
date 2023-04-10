@@ -1,18 +1,20 @@
 #include "../include/pch.h"
 
+int msg_mod = 0;
 int cli_mod = 0;
 int port = 0;
 unsigned int addr[4] = {0, 0, 0, 0};
 
 void test_case_client();
 void test_case_server();
+void test_case_msgsys();
 
 int main(int argc, char *argv[])
 {
     int opt;
     opterr = 0;
 
-    while ((opt = getopt(argc, argv, "+csp:B:")) != -1)
+    while ((opt = getopt(argc, argv, "+csp:B:M")) != -1)
     {
         switch (opt)
         {
@@ -35,6 +37,11 @@ int main(int argc, char *argv[])
             sscanf(optarg, "%d.%d.%d.%d", &addr[0], &addr[1], &addr[2], &addr[3]);
             break;
 
+        case 'M':
+            msg_mod = 1;
+            printf("Message Mod: %s\n", optarg);
+            break;
+
         case ':':
             printf("%c option miss args\n", optopt);
             break;
@@ -49,6 +56,12 @@ int main(int argc, char *argv[])
     if (cli_mod)
     {
         test_case_client();
+    }
+    else if (msg_mod)
+    {
+        MServer ser;
+        ser.Launch();
+        ser.Run();
     }
     else
     {

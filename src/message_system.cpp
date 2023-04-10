@@ -1,19 +1,34 @@
-#include "../include/pch.h"
+#include "pch.h"
 
-MessageSystem::MessageSystem(MServer *server)
-    : server_(server), status_(true)
+MessageSystem::MessageSystem(MServer *server, JobsSystem *task_sys)
+    : server_(server), status_(true), task_sys_(task_sys)
 {
 }
 
 MessageSystem::~MessageSystem()
 {
+    task_sys_ = nullptr;
+    // Clear();
+    cout << "Clean Message system..." << endl;
 }
 
 void MessageSystem::OnMsgProc()
 {
+    cout << "Running Message system..." << endl;
+
     while (status_)
     {
+        MsgPacket *m = PopMsg();
+
+        if (!m)
+            continue;
+
+        // deliver
+        task_sys_->PushMsg(m);
     }
+
+    cout << "Terminate Message system..." << endl;
+    Clear();
 }
 
 void MessageSystem::PushMsg(MsgPacket *m)
@@ -24,6 +39,12 @@ void MessageSystem::PushMsg(MsgPacket *m)
 MsgPacket *MessageSystem::PopMsg()
 {
     MsgPacket *m = msg_queue_.front();
+
+    if (!m)
+    {
+        return nullptr;
+    }
+
     msg_queue_.pop();
     return m;
 }
@@ -32,7 +53,12 @@ void MessageSystem::Clear()
 {
     while (!msg_queue_.empty())
     {
-        delete msg_queue_.front();
+        MsgPacket *m = msg_queue_.front();
+
+        if (!m)
+            continue;
+
         msg_queue_.pop();
+        SafeDelete(m);
     }
 }

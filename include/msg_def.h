@@ -3,27 +3,35 @@
 
 struct MsgPacket;
 
-#include "proc_func_table.h"
+#include "common.h"
+// #include "proc_func_table.h"
 
 // typedef void (*MsgProc)();
-//using ProcFunc = void(*)(MsgPacket* m); declare in proc_func_table.h
+// using ProcFunc = void(*)(MsgPacket* m); declare in proc_func_table.h
 
 enum MSGTYPE
 {
-    mNone = 0,
-    mCustom = 1,
+    em_None = 0,
+    em_Custom = 1,
+    em_Generaic = 2,
 };
 
 struct MsgPacket
 {
     int id_;
+    int msg_type_;
+    int ftype_;
+    // void* cb_;
     void *data_;
 
-    MsgPacket() : id_(0), data_(nullptr)
+    MsgPacket() : id_(0), data_(nullptr), ftype_(0)
     {
     }
+
+    ~MsgPacket()
+    {
+        SafeDelete(data_);
+    }
 };
-
-
 
 #endif

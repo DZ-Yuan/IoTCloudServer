@@ -13,11 +13,12 @@
 
 class MessageSystem;
 class NetworkSystem;
+class JobsSystem;
 
 // #define SerPrint()
 /*
     threads：
-    
+
 */
 class MServer
 {
@@ -56,12 +57,17 @@ public:
 
     void PostMsg();
 
+    // test case
+    void test_case_msg();
+
 public:
     int curr_state_;
-    //网络系统
-    NetworkSystem* network_sys_;
-    //消息处理系统
-    MessageSystem *msg_proc_;
+    // 网络系统
+    NetworkSystem *network_sys_;
+    // 消息处理系统
+    MessageSystem *msg_sys_;
+    // Jobs System
+    JobsSystem *jobs_sys_;
 };
 
 #endif

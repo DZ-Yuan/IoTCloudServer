@@ -4,7 +4,7 @@
 // ------- sys -------
 #include <iostream>
 #include <string.h>
-#include <thread>
+//#include <thread>
 // #include <stdlib.h>
 #include <error.h>
 #include <errno.h>
@@ -26,7 +26,11 @@
 #include "DataPacket.h"
 #include "network_system.h"
 #include "fun.h"
+#include "proc_func_table.h"
 #include "config.h"
+#include "jobs_system.h"
+#include "worker.h"
+#include "_thread.h"
 
 using namespace std;
 
