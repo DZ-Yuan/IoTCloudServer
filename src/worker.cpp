@@ -1,7 +1,7 @@
 #include "pch.h"
 #include "worker.h"
 
-Worker::Worker(JobsSystem *t, int id)
+Worker::Worker(JobSystem *t, int id)
     : jobs_sys_(t), self_id_(id), status_(ewk_None)
 {
 }

@@ -2,7 +2,7 @@
 #define TASK_SYSTEM
 
 #include <queue>
-#include "_thread.h"
+#include "m_thread.h"
 
 #define WORKER_MAX 20
 #define WORKER_NUM 3
@@ -25,11 +25,11 @@ struct WorkerStat
     WorkerStat() : worker_(nullptr), status_(ejob_None) {}
 };
 
-class JobsSystem : public _Thread
+class JobSystem : public MThread
 {
 public:
-    JobsSystem(MServer *);
-    ~JobsSystem();
+    JobSystem(MServer *);
+    ~JobSystem();
 
 public:
     void run();

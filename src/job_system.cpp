@@ -1,11 +1,11 @@
 #include "pch.h"
 
-JobsSystem::JobsSystem(MServer *ser)
+JobSystem::JobSystem(MServer *ser)
     : server_(ser), worker_num_(0), status_(ejob_None)
 {
 }
 
-JobsSystem::~JobsSystem()
+JobSystem::~JobSystem()
 {
     // clean worker_list
     for (int i = 0; i < WORKER_MAX; i++)
@@ -23,7 +23,7 @@ JobsSystem::~JobsSystem()
     cout << "Clean Jobs system..." << endl;
 }
 
-void JobsSystem::run()
+void JobSystem::run()
 {
     status_ = ejob_Running;
     cout << "Running Job system..." << endl;
@@ -48,7 +48,7 @@ void JobsSystem::run()
     Clear();
 }
 
-Worker *JobsSystem::GetIdleWorker()
+Worker *JobSystem::GetIdleWorker()
 {
     for (size_t i = 0; i < WORKER_MAX; i++)
     {
@@ -63,7 +63,7 @@ Worker *JobsSystem::GetIdleWorker()
     return nullptr;
 }
 
-void JobsSystem::RegisterWorker(Worker *w)
+void JobSystem::RegisterWorker(Worker *w)
 {
     for (int i = 0; i < WORKER_MAX; i++)
     {
@@ -76,7 +76,7 @@ void JobsSystem::RegisterWorker(Worker *w)
     }
 }
 
-void JobsSystem::AddWorker()
+void JobSystem::AddWorker()
 {
     for (int i = 0; i < WORKER_NUM; i++)
     {
@@ -87,7 +87,7 @@ void JobsSystem::AddWorker()
     }
 }
 
-void JobsSystem::JobFeedback(int worker_id, int job_id)
+void JobSystem::JobFeedback(int worker_id, int job_id)
 {
     if (worker_id > WORKER_MAX || worker_id < 0)
         return;
@@ -100,7 +100,7 @@ void JobsSystem::JobFeedback(int worker_id, int job_id)
     ws.status_ = ewk_Wating;
 }
 
-MsgPacket *JobsSystem::PopMsg()
+MsgPacket *JobSystem::PopMsg()
 {
     MsgPacket *m = msg_queue_.front();
 
@@ -113,12 +113,12 @@ MsgPacket *JobsSystem::PopMsg()
     return m;
 }
 
-void JobsSystem::PushMsg(MsgPacket *m)
+void JobSystem::PushMsg(MsgPacket *m)
 {
     msg_queue_.push(m);
 }
 
-void JobsSystem::Clear()
+void JobSystem::Clear()
 {
     while (!msg_queue_.empty())
     {

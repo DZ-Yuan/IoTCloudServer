@@ -1,17 +1,17 @@
-#ifndef _THREAD
-#define _THREAD
+#ifndef Mm_thread
+#define Mm_thread
 
 #include <pthread.h>
 
-class _Thread
+class MThread
 {
 public:
-    _Thread() {}
-    virtual ~_Thread() { join(); }
+    MThread() {}
+    virtual ~MThread() { join(); }
 
     void start()
     {
-        pthread_create(&thread, nullptr, _Thread::entryPoint, this);
+        pthread_create(&thread, nullptr, MThread::entryPoint, this);
     }
 
     void join()
@@ -25,7 +25,7 @@ protected:
 private:
     static void *entryPoint(void *pthis)
     {
-        _Thread *pt = static_cast<_Thread *>(pthis);
+        MThread *pt = static_cast<MThread *>(pthis);
         pt->run();
         return nullptr;
     }
