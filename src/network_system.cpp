@@ -1,9 +1,9 @@
 #include "../include/pch.h"
+#include "network_system.h"
 
 SockData::SockData(int sock)
+    : sock_(-1), ip_addr_(0), port_(0), mem_ptr_(nullptr), offset_(nullptr), end_ptr_(nullptr)
 {
-    memset(this, 0, sizeof(*this));
-
     sock_ = sock;
     int total_size_ = PACK_DEFAULT_SIZE;
     //
@@ -16,22 +16,23 @@ SockData::~SockData()
 {
     if (mem_ptr_)
     {
-        delete mem_ptr_;
+        free(mem_ptr_);
         mem_ptr_ = nullptr;
     }
+    printf("release mem_ptr!!\n");
 }
 
 void SockData::Resize(int need)
 {
-    //申请
+    // 申请
     int total = GetTotalSize() + need - GetAvailable();
     char *n_mem = (char *)malloc(total);
     memset(n_mem, 0, total);
-    //拷贝原数据
+    // 拷贝原数据
     int offset_size = GetOffsetSize();
     memcpy(n_mem, mem_ptr_, offset_size);
     delete mem_ptr_;
-    //更新指针
+    // 更新指针
     mem_ptr_ = n_mem;
     offset_ = mem_ptr_ + offset_size;
     end_ptr_ = mem_ptr_ + total;
@@ -43,7 +44,7 @@ void SockData::Append(const char *src, int size)
     {
         return;
     }
-    //比较下剩余大小
+    // 比较下剩余大小
     if (size > GetAvailable())
     {
         Resize(size);
@@ -52,6 +53,29 @@ void SockData::Append(const char *src, int size)
     // warning：线程不安全
     memcpy(offset_, src, size);
     offset_ += size;
+}
+
+char *SockData::GetAddr()
+{
+    if (ip_addr_ <= 0)
+    {
+        return nullptr;
+    }
+
+    in_addr addr;
+    addr.s_addr = ip_addr_;
+
+    return inet_ntoa(addr);
+}
+
+void SockData::SetAddrByString(char *ip)
+{
+    if (!ip)
+    {
+        return;
+    }
+
+    ip_addr_ = inet_addr(ip);
 }
 
 SockDataReader::SockDataReader(int sock)
@@ -63,12 +87,9 @@ SockDataReader::~SockDataReader()
 {
 }
 
-void SockDataReader::ParseData(void *pack_data, int &pack_size)
+void SockDataReader::ParseData(char **pack_data, int &pack_size)
 {
-    pack_data = nullptr;
-    pack_size = 0;
-
-    //解析头
+    // 解析头部2字节，说明data的有效长度
     int ret = ParseDataLen();
     if (ret < 0)
     {
@@ -76,24 +97,25 @@ void SockDataReader::ParseData(void *pack_data, int &pack_size)
     }
 
     int offset_size = GetOffsetSize();
-    //判断剩余长度
-    if (data_len_ > offset_size - parsed_)
+    // 判断当前已接收长度
+    if (data_len_ > offset_size)
     {
         return;
     }
 
-    //申请空间
+    // 申请空间
     char *d = (char *)malloc(data_len_);
     memset(d, 0, data_len_);
-    //复制数据
-    memcpy(d, mem_ptr_, data_len_);
-    parsed_ += data_len_;
+    // 复制数据，去掉头部2字节
+    memcpy(d, mem_ptr_ + sizeof(uint16_t), data_len_);
+    parsed_ = data_len_;
 
-    //数据包内存地址
-    pack_data = d;
+    // 数据包内存地址
+    *pack_data = d;
     pack_size = data_len_;
+    data_len_ = 0;
 
-    //调整剩余数据位置
+    // 检查是否还有剩余数据
     int s = offset_size - parsed_;
     if (s <= 0)
     {
@@ -102,10 +124,10 @@ void SockDataReader::ParseData(void *pack_data, int &pack_size)
         return;
     }
 
-    //拷贝剩余数据到前头
+    // 拷贝剩余数据到前头
     memcpy(mem_ptr_, mem_ptr_ + parsed_, s);
+    memset(mem_ptr_ + parsed_, 0, GetAvailable());
     offset_ = mem_ptr_ + s;
-    memset(offset_, 0, GetAvailable());
 }
 
 int SockDataReader::ParseDataLen()
@@ -115,13 +137,12 @@ int SockDataReader::ParseDataLen()
         return data_len_;
     }
 
-    if (GetOffsetSize() < sizeof(ushort))
+    if (GetOffsetSize() < sizeof(uint16_t))
     {
         return -1;
     }
 
-    data_len_ = *(ushort *)mem_ptr_;
-    parsed_ += sizeof(ushort);
+    data_len_ = *(uint16_t *)mem_ptr_;
 
     return data_len_;
 }
@@ -146,7 +167,7 @@ void SockDataReader::Adjust()
 }
 
 NetworkSystem::NetworkSystem(MServer *server)
-    : status_(sInActive), ser_sock_(0), address_("127.0.0.1"), port_(1668), server_(server)
+    : status_(sInActive), ser_sock_(0), server_(server)
 {
     sock_map_.clear();
 }
@@ -160,15 +181,19 @@ NetworkSystem::~NetworkSystem()
     // todo 清理epoll
 }
 
-void NetworkSystem::SetupConfig(string addr, int port)
+void NetworkSystem::SetupConfig(string addr, int port, int uport)
 {
     address_ = addr;
     port_ = port;
+    uport_ = uport;
 }
 
 void NetworkSystem::InitSerSock()
 {
+    // tcp
     ser_sock_ = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+    // udp
+    ser_usock_ = socket(AF_INET, SOCK_DGRAM, 0);
 
     // set host address
     sockaddr_in server_addr;
@@ -177,19 +202,33 @@ void NetworkSystem::InitSerSock()
     server_addr.sin_addr.s_addr = inet_addr(address_.c_str());
     server_addr.sin_port = htons(port_);
 
+    sockaddr_in udp_addr;
+    bzero(&udp_addr, sizeof(udp_addr));
+    udp_addr.sin_family = AF_INET;
+    udp_addr.sin_addr.s_addr = inet_addr(address_.c_str());
+    udp_addr.sin_port = htons(uport_);
+
+    int reuse = 1;
+    setsockopt(ser_sock_, SOL_SOCKET, SO_REUSEADDR, (void *)&reuse, sizeof(reuse));
+    setsockopt(ser_usock_, SOL_SOCKET, SO_REUSEADDR, (void *)&reuse, sizeof(reuse));
+
     bind(ser_sock_, (sockaddr *)&server_addr, sizeof(server_addr));
+    bind(ser_usock_, (sockaddr *)&udp_addr, sizeof(udp_addr));
 }
 
 void NetworkSystem::Start()
 {
     // 初始化sock
     InitSerSock();
-    //创建epoll
+    // 创建epoll
     epfd_ = epoll_create(20);
 
-    // 监听线程
+    // 监听连接线程
     listen_thread_ = thread((OnListenThread()));
     listen_thread_.detach();
+    // UDP接收线程
+    udp_rcv_thread_ = thread((OnUDPRecvThread()));
+    udp_rcv_thread_.detach();
     // epoll事件线程
     epoll_thread_ = thread((OnEpollEventThread()));
     epoll_thread_.detach();
@@ -205,6 +244,14 @@ function<void()> NetworkSystem::OnListenThread()
     return [&]() -> void
     {
         this->OnListen();
+    };
+}
+
+function<void()> NetworkSystem::OnUDPRecvThread()
+{
+    return [&]() -> void
+    {
+        this->OnUDPRecv();
     };
 }
 
@@ -232,11 +279,13 @@ void NetworkSystem::OnListen()
     OutputPrint(outmsg);
     OutputPrint("Listening...");
 
+    // client sock
+    sockaddr_in client_addr;
+    socklen_t addr_size = sizeof(client_addr);
+
     while (this->GetStatus() != sTerminated)
     {
-        // client sock
-        sockaddr_in client_addr;
-        socklen_t addr_size = sizeof(client_addr);
+        bzero(&client_addr, addr_size);
         int client_sock = accept(ser_sock_, (sockaddr *)&client_addr, &addr_size);
 
         if (client_sock < 0)
@@ -245,20 +294,46 @@ void NetworkSystem::OnListen()
             continue;
         }
 
-        //添加监听客户端的socket
+        AddNewClientSock(client_sock);
+        // 添加监听客户端的socket
         if (!this->AddEpollEvent(client_sock))
         {
+            // TODO: clear sock_map_[client_sock]
             continue;
         }
 
-        AddNewClientSock(client_sock);
-
-        string res = SERVER_CONN_RESPONES;
-        send(client_sock, res.c_str(), sizeof(res.c_str()), 0);
+        // string res = SERVER_CONN_RESPONES;
+        // send(client_sock, res.c_str(), sizeof(res.c_str()), 0);
         OutputPrint("New Client Connect Successfully !");
     }
 
     OutputPrint("Listen thread close...");
+}
+
+void NetworkSystem::OnUDPRecv()
+{
+    sockaddr_in peer_addr;
+    char buf[64] = {0};
+    int res = 0;
+
+    socklen_t addr_len = sizeof(peer_addr);
+
+    while (GetStatus() != sTerminated)
+    {
+        bzero(&peer_addr, addr_len);
+        res = recvfrom(ser_usock_, buf, sizeof(buf), 0, (struct sockaddr *)&peer_addr, &addr_len);
+
+        if (res <= 0)
+        {
+            printf("[%s] UDP recv err!\n", __FUNCTION__);
+            continue;
+        }
+#if DEBUG
+        printf("[%s] UDP recv from %s : %s", __FUNCTION__, inet_ntoa(peer_addr.sin_addr), buf);
+#endif
+
+        // cp to queue
+    }
 }
 
 void NetworkSystem::OnEpollEvent()
@@ -294,7 +369,7 @@ void NetworkSystem::OnProcSockData()
 
         sock_buffer_queue_.pop();
 
-        //查找sock容器
+        // 查找sock容器
         auto iter = sock_map_.find(sd->sock_);
         if (iter == sock_map_.end())
         {
@@ -303,21 +378,21 @@ void NetworkSystem::OnProcSockData()
         }
 
         SockDataReader *reader = iter->second;
-        //追加数据到指定sock中
+        // 追加数据到指定sock接收缓存中
         reader->Append(sd->GetMemPtr(), sd->GetOffsetSize());
-        delete sd;
-        sd = nullptr;
 
-        //尝试解析数据
+        // 尝试解析数据
         char *data = nullptr;
         int size = 0;
-        reader->ParseData(data, size);
+        reader->ParseData(&data, size);
 
         if (data)
         {
-            //打包数据
-            PackageInDataPacket(data, size);
+            // 打包数据
+            PackageInDataPacket(data, size, sd->sock_);
         }
+
+        SafeDelete(sd);
     }
 
     OutputPrint("Sock Data Proc thread close...");
@@ -335,7 +410,7 @@ void NetworkSystem::OnSendSockData()
 
         sock_buffer_queue_.pop();
 
-        //SendSockData(sd->sock_, sd->GetMemPtr(), sd->GetOffsetSize());
+        // SendSockData(sd->sock_, sd->GetMemPtr(), sd->GetOffsetSize());
     }
 }
 
@@ -387,29 +462,26 @@ bool NetworkSystem::DelEpollEvent(int fd)
 
 void NetworkSystem::RecvSockData(int sock)
 {
-    SockData *sd = new SockData(sock);
-
-    //循环读取
-    while (1)
+    // 循环读取
+    int ret = RecvOnce(sock, buffer_, PACK_DEFAULT_SIZE);
+    if (ret < 0)
     {
-        int ret = RecvOnce(sock, buffer_, PACK_DEFAULT_SIZE);
-        if (ret < 0)
-        {
-            //对端断开连接
-            CloseOneSock(sock);
-            SafeDelete(sd);
-            break;
-        }
-        //无数据可读
-        if (ret == 0)
-        {
-            break;
-        }
-
-        // copy到sock缓存数据中
-        sd->Append(buffer_, ret);
-        memset(buffer_, 0, BUFFER_SEIZ);
+        // 对端断开连接
+        CloseOneSock(sock);
+        printf("[DEBUG] Close a sock\n");
+        return;
     }
+    // 无数据可读
+    if (ret == 0)
+    {
+        return;
+    }
+
+    SockData *sd = new SockData(sock);
+    // copy到sock缓存数据中
+    sd->Append(buffer_, ret);
+    printf("[DEBUG] Check buffer_: %s\n", buffer_);
+    memset(buffer_, 0, BUFFER_SEIZ);
 
     sock_buffer_queue_.push(sd);
 }
@@ -439,7 +511,9 @@ int NetworkSystem::RecvOnce(int sock, char *buf, int size)
 void NetworkSystem::SendSockData(int sock, char *data, int size)
 {
     int s = size;
-    while (size > 0)
+
+    // TODO: do some retry when send data fail
+    while (s > 0)
     {
         int ss = send(sock, data + (size - s), s, 0);
         if (ss <= -1)
@@ -451,6 +525,40 @@ void NetworkSystem::SendSockData(int sock, char *data, int size)
     }
 
     return;
+}
+
+int NetworkSystem::SendSockDataByIP(uint32_t ip, char *data, int size)
+{
+    uint32_t s_ip = 0;
+
+    for (auto iter = sock_map_.begin(); iter != sock_map_.end(); ++iter)
+    {
+        s_ip = GetSockIP(iter->first);
+        if (s_ip && s_ip == ip)
+        {
+            SendSockData(iter->first, data, size);
+            return 0;
+        }
+    }
+
+    return -1;
+}
+
+uint32_t NetworkSystem::GetSockIP(int sock)
+{
+    struct sockaddr_in peer;
+
+    bzero(&peer, sizeof(peer));
+
+    socklen_t len = sizeof(peer);
+    int err = getpeername(sock, (struct sockaddr *)&peer, &len);
+
+    if (err < 0)
+    {
+        return 0;
+    }
+
+    return peer.sin_addr.s_addr;
 }
 
 void NetworkSystem::CloseOneSock(int sock)
@@ -498,13 +606,28 @@ void NetworkSystem::ClearPacketQueue()
     }
 }
 
-void NetworkSystem::PackageInDataPacket(void *data, int size)
+void NetworkSystem::PackageInDataPacket(char *data, int size, int sock)
 {
     if (!data || size <= 0)
     {
         return;
     }
 
-    DataPacket *dp = new DataPacket(static_cast<char *>(data), size);
-    packet_queue_.push(dp);
+    DataPacket *dp = new DataPacket(data, size);
+    // packet_queue_.push(dp);
+
+    if (sock != -1)
+    {
+        dp->sock_ = sock;
+    }
+
+    // deliver
+    int sys_id = dp->ReadOnce<uint8_t>();
+    int res = server_->CallNetMsgRecvCallback(sys_id, dp);
+
+    if (res < 0)
+    {
+        delete dp;
+        dp = nullptr;
+    }
 }

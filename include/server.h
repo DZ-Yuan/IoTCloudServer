@@ -10,10 +10,21 @@
 #include <sys/epoll.h>
 
 #include "common.h"
+#include "interface_class.h"
 
 class MessageSystem;
 class NetworkSystem;
-class JobsSystem;
+class JobSystem;
+class NodeSystem;
+
+// typedef void (*accept_cb)(void *, void *);
+
+enum SYSTEM_ID
+{
+    sidNull = 0,
+    sidNodeSystem = 1,
+    sidEnd,
+};
 
 // #define SerPrint()
 /*
@@ -57,6 +68,13 @@ public:
 
     void PostMsg();
 
+    uint64_t GetTime(){};
+    uint64_t GetTick(){};
+
+    // cb
+    void RegNetMsgRecvCallback(int sys_id, NetMsgHdl_Interface *cb);
+    int CallNetMsgRecvCallback(int sys_id, DataPacket *dp);
+
     // test case
     void test_case_msg();
 
@@ -67,7 +85,11 @@ public:
     // 消息处理系统
     MessageSystem *msg_sys_;
     // Jobs System
-    JobsSystem *jobs_sys_;
+    JobSystem *jobs_sys_;
+    // Node System
+    NodeSystem *node_sys_;
+
+    NetMsgHdl_Interface *NetMsgRecvCallbackFunc[sidEnd];
 };
 
 #endif

@@ -14,6 +14,7 @@ enum MSGTYPE
     em_None = 0,
     em_Custom = 1,
     em_Generaic = 2,
+    em_DevNodeCtl = 3,
 };
 
 struct MsgPacket
@@ -22,7 +23,7 @@ struct MsgPacket
     int msg_type_;
     int ftype_;
     // void* cb_;
-    void *data_;
+    char *data_;
 
     MsgPacket() : id_(0), data_(nullptr), ftype_(0)
     {

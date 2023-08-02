@@ -3,12 +3,14 @@
 
 #include <queue>
 #include "msg_def.h"
-#include "_thread.h"
+#include "m_thread.h"
+#include "node_system.h"
+#include "interface_class.h"
 
 class MServer;
-class JobsSystem;
+class JobSystem;
 
-enum class MESSAGESYSTEMSTATUS
+enum class MESSAGE_SYSTEM_STATUS
 {
     emsg_Err = -1,
     emsg_None = 0,
@@ -16,10 +18,10 @@ enum class MESSAGESYSTEMSTATUS
     emsg_Terminated = 2,
 };
 
-class MessageSystem : public _Thread
+class MessageSystem : public MThread, SystemBase_Interface
 {
 public:
-    MessageSystem(MServer *server, JobsSystem *);
+    MessageSystem(MServer *server, JobSystem *);
     ~MessageSystem();
 
 public:
@@ -33,7 +35,10 @@ public:
     // msg pop
     MsgPacket *PopMsg();
 
+    virtual void SetStatus(int s) { status_ = s ? true : false; }
+    virtual int GetStatus() { return status_ ? 1 : 0; }
     void Terminate() { status_ = false; }
+
     // clear
     void Clear();
 
@@ -44,7 +49,8 @@ private:
     // 优先队列
     // 消息队列
     std::queue<MsgPacket *> msg_queue_;
-    JobsSystem *task_sys_;
+    // should I change the var name?
+    JobSystem *task_sys_;
 
     MServer *server_;
 };

@@ -2,7 +2,7 @@
 
 DataPacket::DataPacket()
 {
-    int len = PACKET_SIZE;
+    int len = DATAPACKET_SIZE;
     this->mem_ptr_ = (char *)malloc(len);
     memset(this->mem_ptr_, 0, len);
     this->offset_ = this->mem_ptr_;
@@ -21,6 +21,7 @@ DataPacket::~DataPacket()
    ClearData();
 }
 
+#if 0
 int DataPacket::GetNetPacket(char *pack_ptr)
 {
     int net_size = offset_ - mem_ptr_ + sizeof(int);
@@ -43,7 +44,7 @@ void DataPacket::GetNetPacket(Packet &p)
     p.len = offset_ - mem_ptr_;
     p.data = mem_ptr_;
 }
-
+#endif
 // template<typename T>
 // void DataPacket::WriteData(T &data){
 //     int size = sizeof(T);

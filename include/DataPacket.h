@@ -1,7 +1,7 @@
 #ifndef DATAPACKET
 #define DATAPACKET
 
-#define PACKET_SIZE 128
+// #define PACKET_SIZE 128
 
 struct Packet
 {
@@ -32,8 +32,10 @@ public:
         return !mem_ptr_;
     }
 
+#if 0
     int GetNetPacket(char *pack_ptr);
     void GetNetPacket(Packet &p);
+#endif
 
     void ClearData()
     {
@@ -58,6 +60,11 @@ public:
 
     template <typename T>
     T rReadOnce();
+
+public:
+    // network info
+    int sock_;
+    uint32_t ip_;
 
 private:
     char *mem_ptr_;

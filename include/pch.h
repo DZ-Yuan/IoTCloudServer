@@ -4,12 +4,13 @@
 // ------- sys -------
 #include <iostream>
 #include <string.h>
-//#include <thread>
-// #include <stdlib.h>
+#include <stdint.h>
+// #include <thread>
+//  #include <stdlib.h>
 #include <error.h>
 #include <errno.h>
 #include <unistd.h>
-//socket
+// socket
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <arpa/inet.h>
@@ -23,15 +24,20 @@
 #include "message_system.h"
 #include "msg_def.h"
 #include "common.h"
+#include "interface_class.h"
 #include "DataPacket.h"
 #include "network_system.h"
 #include "fun.h"
 #include "proc_func_table.h"
 #include "config.h"
-#include "jobs_system.h"
+#include "job_system.h"
 #include "worker.h"
-#include "_thread.h"
+#include "m_thread.h"
+#include "m_timer.h"
+#include "node_system.h"
 
 using namespace std;
+
+#define DEBUG 1
 
 #endif

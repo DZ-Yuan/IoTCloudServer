@@ -1,5 +1,5 @@
-#ifndef Mm_thread
-#define Mm_thread
+#ifndef M_THREAD
+#define M_THREAD
 
 #include <pthread.h>
 

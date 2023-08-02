@@ -1,5 +1,5 @@
-#ifndef MTIMER
-#define MTIMER
+#ifndef M_TIMER
+#define M_TIMER
 
 struct MsgPacket;
 class MessageSystem;

@@ -9,9 +9,11 @@
 #include <sys/epoll.h>
 #include "sock_unit.h"
 #include "common.h"
+#include "config.h"
+#include "interface_class.h"
 
-#define BUFFER_SEIZ 1024
-#define PACK_DEFAULT_SIZE 128
+// #define BUFFER_SEIZ 1024
+// #define PACK_DEFAULT_SIZE 128
 
 #define SERVER_MAX_EPOLL_EVENTS 20
 #define SERVER_CONN_RESPONES "Server is online..."
@@ -22,6 +24,8 @@ class DataPacket;
 struct SockData
 {
     int sock_;
+    in_addr_t ip_addr_;
+    uint32_t port_;
     //
     char *mem_ptr_;
     char *offset_;
@@ -50,18 +54,21 @@ struct SockData
     {
         return mem_ptr_;
     }
+
+    char *GetAddr();
+    void SetAddrByString(char *ip);
 };
 
 struct SockDataReader : SockData
 {
     ushort data_len_;
-    //已解析长度
+    // 已解析长度
     int parsed_;
 
     SockDataReader(int sock);
     virtual ~SockDataReader();
 
-    void ParseData(void *pack_data, int &size);
+    void ParseData(char **pack_data, int &size);
     int ParseDataLen();
     // unused
     void Adjust();
@@ -90,8 +97,8 @@ struct SockDataWriter
     threads：
     1 监听；1 epoll响应；1 sock数据处理
 */
-//网络系统
-class NetworkSystem
+// 网络系统
+class NetworkSystem : public SystemBase_Interface
 {
 public:
     NetworkSystem(MServer *server);
@@ -105,34 +112,37 @@ public:
     };
 
 public:
-    void SetupConfig(std::string addr, int port);
-    //创建服务器sock
+    void SetupConfig(std::string addr, int port, int uport);
+    // 创建服务器sock
     void InitSerSock();
     void Start();
 
     // thread
     std::function<void()> OnListenThread();
+    std::function<void()> OnUDPRecvThread();
     std::function<void()> OnEpollEventThread();
     std::function<void()> OnProcSockDataThread();
-    //监听
+    // 监听
     void OnListen();
-    //处理epoll事件
+    // udp
+    void OnUDPRecv();
+    // 处理epoll事件
     void OnEpollEvent();
-    //处理Sock数据
+    // 处理Sock数据
     void OnProcSockData();
     // todo 发送sock数据
     void OnSendSockData();
 
     // func
-    void SetStatus(int f)
+    virtual void SetStatus(int f)
     {
         status_ = f;
     }
-    int GetStatus()
+    virtual int GetStatus()
     {
         return status_;
     }
-    void Terminate()
+    virtual void Terminate()
     {
         SetStatus(sTerminated);
     }
@@ -143,22 +153,25 @@ public:
     bool AddEpollEvent(int fd);
     bool DelEpollEvent(int fd);
 
-    //接收sock数据
+    // 接收sock数据
     void RecvSockData(int sock);
     int RecvOnce(int sock, char *buf, int size);
-    //发送sock数据
+    // 发送sock数据
     void SendSockData(int sock, char *data, int size);
+    int SendSockDataByIP(uint32_t ip, char *data, int size);
 
-    //关闭一个sock
+    uint32_t GetSockIP(int sock);
+
+    // 关闭一个sock
     void CloseOneSock(int sock);
-    //清理
+    // 清理
     void ClearSockDataQueue();
     void ClearSockContainer();
     void ClearPacketQueue();
 
-    //打包sock数据
-    void PackageInDataPacket(void *data, int size);
-    //获取可用数据
+    // 打包sock数据
+    void PackageInDataPacket(char *data, int size, int sock = -1);
+    // 获取可用数据
     DataPacket *AcquireDataPacket()
     {
         DataPacket *dp = packet_queue_.front();
@@ -188,10 +201,13 @@ public:
 public:
     int status_;
     char buffer_[BUFFER_SEIZ];
-    // server sock
+    // server tcp sock
     int ser_sock_;
+    // server udp sock
+    int ser_usock_;
     std::string address_;
     int port_;
+    int uport_;
 
     // epoll
     int epfd_;
@@ -204,18 +220,21 @@ public:
     // DataPacket数据发送队列
     std::queue<SockDataWriter *> dp_send_queue_;
 
-    // 已解释数据包队列
+    // 已解释数据包队列 unused
     std::queue<DataPacket *> packet_queue_;
 
     // MServer
     MServer *server_;
 
-    //监听线程
+    // TCP连接监听线程
     std::thread listen_thread_;
+    // UDP监听线程
+    std::thread udp_rcv_thread_;
     // epoll处理线程
     std::thread epoll_thread_;
     // sock数据处理线程
     std::thread data_thread_;
+    // 发送线程
 };
 
 #endif

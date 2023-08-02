@@ -1,6 +1,6 @@
 #include "pch.h"
 
-MessageSystem::MessageSystem(MServer *server, JobsSystem *task_sys)
+MessageSystem::MessageSystem(MServer *server, JobSystem *task_sys)
     : server_(server), status_(true), task_sys_(task_sys)
 {
 }
@@ -33,6 +33,11 @@ void MessageSystem::OnMsgProc()
 
 void MessageSystem::PushMsg(MsgPacket *m)
 {
+    if (!m)
+    {
+        return;
+    }
+
     msg_queue_.push(m);
 }
 

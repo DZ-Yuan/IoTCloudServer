@@ -1,4 +1,4 @@
-TOPDIR := ${CURDIR}
+TOPDIR := .
 HEAD_DIR := $(TOPDIR)/include
 SRC_DIR := $(TOPDIR)/src
 SRC:= 
@@ -38,6 +38,16 @@ define t5
 		echo "$${file}")
 endef
 
+define t6_1
+	$(error "Abort by manual!")
+endef
+
+define t6
+	@if [ ! -e ./README.md ] ; then \
+		echo "Hell"; \
+	fi
+endef
+
 
 all:
 	@for f in `find $(SRC_DIR) -name *.cpp`; \
@@ -45,7 +55,7 @@ all:
 		SRC="$${SRC}"" $${f}";\
 	done; \
 	echo $${SRC}; \
-	$(CXX) $${SRC} -I $(HEAD_DIR) -l $(LIB) -o $(TARGET)
+	$(CXX) -O0 -g $${SRC} -I $(HEAD_DIR) -l$(LIB) -o $(TARGET)
 
 prepare:
 	for f in `find ${SRC_DIR} -name *.cpp`; \
@@ -84,6 +94,12 @@ test5:
 test6:
 	@echo $(VERSION)
 
+test7: test7_1
+	$(call t6)
+
+test7_1:
+	@if [ ! -e ./README.md ]; then false; fi
+
 seek: 
 	@for file in `find ./src/ -name *.cpp`;\
 	do\
@@ -97,3 +113,4 @@ clean:
 	fi
 	@echo "clean up"
 
+.PHONY: clean

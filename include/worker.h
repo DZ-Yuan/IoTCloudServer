@@ -2,7 +2,7 @@
 #define WORKER
 
 #include <iostream>
-#include "_thread.h"
+#include "m_thread.h"
 
 enum WORKSTAT
 {
@@ -12,10 +12,10 @@ enum WORKSTAT
     ewk_Retire,
 };
 
-class Worker : public _Thread
+class Worker : public MThread
 {
 public:
-    Worker(JobsSystem *, int);
+    Worker(JobSystem *, int);
     ~Worker();
 
 public:
@@ -39,7 +39,7 @@ private:
 
     int job_id_;
 
-    JobsSystem *jobs_sys_;
+    JobSystem *jobs_sys_;
     MsgPacket *msg_;
 };
 

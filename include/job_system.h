@@ -3,6 +3,7 @@
 
 #include <queue>
 #include "m_thread.h"
+#include "interface_class.h"
 
 #define WORKER_MAX 20
 #define WORKER_NUM 3
@@ -25,7 +26,7 @@ struct WorkerStat
     WorkerStat() : worker_(nullptr), status_(ejob_None) {}
 };
 
-class JobSystem : public MThread
+class JobSystem : public MThread, SystemBase_Interface
 {
 public:
     JobSystem(MServer *);
@@ -45,7 +46,9 @@ public:
     MsgPacket *PopMsg();
     void PushMsg(MsgPacket *);
 
-    void Terminate() { status_ = ejob_Terminated; }
+    virtual void SetStatus(int s) { status_ = s; }
+    virtual int GetStatus() { return status_; }
+    virtual void Terminate() { status_ = ejob_Terminated; }
     void Clear();
 
 private:
