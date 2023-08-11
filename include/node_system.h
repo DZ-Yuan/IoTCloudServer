@@ -4,8 +4,17 @@
 #include "common.h"
 #include "interface_class.h"
 
+#define TIMER_DELETE(t)  \
+    if (t)               \
+    {                    \
+        timer_delete(t); \
+        t = 0;           \
+    }
+
 class MServer;
 class DataPacket;
+class NodeSystem;
+class TimerEvent;
 
 // 0 - Hello/HeartBeatPacket
 // 1 - LCC Advertisement
@@ -41,36 +50,37 @@ struct NodeInfo
     uint32_t ip_;
     uint32_t port_;
     uint32_t resp_time_;
+    timer_t heartbeat_timer_id_;
+    timer_t expire_timer_id_;
+    std::list<TimerEvent *> timer_list_;
+    // maybe we can use resp_time_ instead of create new value
+    bool is_expire_;
+
+    NodeSystem *node_system_;
 
     void *pending_action_;
     void *mq_;
 
-    NodeInfo(uint8_t id)
+    NodeInfo(uint8_t id, NodeSystem *node_sys_)
     {
         memset(this, 0, sizeof(*this));
         nid_ = id;
+        node_system_ = node_sys_;
+
+        is_expire_ = false;
     }
 
-    void GetDevName(char *name, int size)
-    {
-        // need 5 byte
-        if (size < sizeof(name_) + 1)
-        {
-            return;
-        }
+    ~NodeInfo();
 
-        memcpy(name, &name_, sizeof(name_));
-        name[5] = '\0';
-    }
+    void GetDevName(char *name, int size);
+    void GetDevIPString(char *ip, int size){};
 
-    void GetDevIPString(char *ip, int size)
-    {
-    }
+    uint32_t GetDevIP() { return ip_; }
 
-    uint32_t GetDevIP()
-    {
-        return ip_;
-    }
+    void StartHeartBeatTimer();
+    void StartExpireTimer();
+    void CleanTimer(timer_t);
+    void CleanAllTimer();
 };
 
 class NodeSystem : public MThread, SystemBase_Interface, NetMsgHdl_Interface
@@ -91,13 +101,18 @@ public:
     void Acknowledge(int sock);
 
     int GetDevlist(std::vector<NodeInfo *> &dev_arr);
-    NodeInfo *GetDevDetail(int node_id);
+    NodeInfo *GetDevInfo(int node_id);
 
     bool DevInfo2Byte(NodeInfo *node, char *arr, int size);
+    void SendSockData(int sock, char *data, int size);
+    void CloseSock(int sock);
+    void BreakOffDev(int node_id);
+    void DeleteDev(int node_id);
 
     // cmd implement
     int DoConnect(DataPacket *);
-    int DoReqDevList(DataPacket *dp);
+    int DoComfirm(DataPacket *);
+    int DoReqDevList(DataPacket *);
 
     // interface
     virtual int ReceiveNetPacket_IF(DataPacket *);

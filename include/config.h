@@ -5,6 +5,8 @@
 #define SER_TCP_PORT 13980
 #define SER_UDP_PORT 12980
 
+#define CLOUD_ID 202313980
+
 #define CLI_IP "127.0.0.1"
 #define CLI_PORT 6789
 

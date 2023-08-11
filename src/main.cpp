@@ -11,15 +11,20 @@ void test_case_client();
 void test_case_server();
 void test_case_msgsys();
 
+void sig_handle(union sigval v)
+{
+    printf("Wakeup! signal: %d\n", v.sival_int);
+}
+
 void test_main()
 {
-    std::list<int> list_;
+    uint64_t key = Get64BitRandom();
 
-    list_.clear();
-    int a = list_.front();
-    list_.pop_front();
-    cout << a << endl;
-    cout << "t_main Done" << endl;
+    // char str[sizeof(uint64_t) + 1] = {0};
+    // Byte2Hex((char *)&key, sizeof(uint64_t), str);
+
+    // str[sizeof(uint64_t) + 1] = '\0';
+    printf("64bit key is %u", key);
 }
 
 int main(int argc, char *argv[])

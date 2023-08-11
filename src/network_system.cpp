@@ -293,7 +293,8 @@ void NetworkSystem::OnListen()
             OutputPrint("Socket Error");
             continue;
         }
-
+        // sock non-block
+        SetNonBlocking(client_sock);
         AddNewClientSock(client_sock);
         // 添加监听客户端的socket
         if (!this->AddEpollEvent(client_sock))
@@ -305,6 +306,7 @@ void NetworkSystem::OnListen()
         // string res = SERVER_CONN_RESPONES;
         // send(client_sock, res.c_str(), sizeof(res.c_str()), 0);
         OutputPrint("New Client Connect Successfully !");
+        printf("[%s] New Client sock: %d, IP: %s \n", __FUNCTION__, client_sock, inet_ntoa(client_addr.sin_addr));
     }
 
     OutputPrint("Listen thread close...");
@@ -544,6 +546,23 @@ int NetworkSystem::SendSockDataByIP(uint32_t ip, char *data, int size)
     return -1;
 }
 
+void NetworkSystem::SetNonBlocking(int sock)
+{
+    int opts;
+    opts = fcntl(sock, F_GETFL);
+    if (opts < 0)
+    {
+        perror("fcntl(sock,GETFL)");
+        exit(1);
+    }
+    opts = opts | O_NONBLOCK;
+    if (fcntl(sock, F_SETFL, opts) < 0)
+    {
+        perror("fcntl(sock,SETFL,opts)");
+        exit(1);
+    }
+}
+
 uint32_t NetworkSystem::GetSockIP(int sock)
 {
     struct sockaddr_in peer;
@@ -567,6 +586,7 @@ void NetworkSystem::CloseOneSock(int sock)
     if (it != sock_map_.end())
     {
         delete it->second;
+        sock_map_.erase(it);
     }
 
     DisconnectSock(sock);

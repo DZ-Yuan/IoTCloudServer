@@ -2,7 +2,7 @@ TOPDIR := .
 HEAD_DIR := $(TOPDIR)/include
 SRC_DIR := $(TOPDIR)/src
 SRC:= 
-LIB:=pthread
+LIB:=-lpthread -lrt
 TARGET:=Demo
 
 include $(HEAD_DIR)/Makefile
@@ -55,7 +55,7 @@ all:
 		SRC="$${SRC}"" $${f}";\
 	done; \
 	echo $${SRC}; \
-	$(CXX) -O0 -g $${SRC} -I $(HEAD_DIR) -l$(LIB) -o $(TARGET)
+	$(CXX) -O0 -g $${SRC} -I $(HEAD_DIR) $(LIB) -o $(TARGET)
 
 prepare:
 	for f in `find ${SRC_DIR} -name *.cpp`; \

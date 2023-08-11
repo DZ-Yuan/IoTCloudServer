@@ -157,8 +157,10 @@ public:
     void RecvSockData(int sock);
     int RecvOnce(int sock, char *buf, int size);
     // 发送sock数据
-    void SendSockData(int sock, char *data, int size);
+    static void SendSockData(int sock, char *data, int size);
     int SendSockDataByIP(uint32_t ip, char *data, int size);
+
+    void SetNonBlocking(int sock);
 
     uint32_t GetSockIP(int sock);
 
